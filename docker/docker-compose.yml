@@ -546,14 +546,16 @@ services:
     extra_hosts:
       - "supabase-pooler:127.0.0.1"
     ports:
-      # Bound to localhost so Postgres is NOT exposed to the public internet.
-      # Apps deployed on this server reach the db over the Docker network;
-      # for remote access use an SSH tunnel:
+      # NOTE: the session pooler (5432) is intentionally NOT published here.
+      # Another service on this host already binds 0.0.0.0:5432, and publishing
+      # 5432 again would fail with "address already in use", which silently drops
+      # ALL of supavisor's port mappings (incl. 6543). Reach the session pooler
+      # over the Docker network, or via SSH tunnel:
       #   ssh -L 5432:127.0.0.1:5432 root@your-vps
-      # To expose publicly (not recommended), remove the "127.0.0.1:" prefix.
-      - 127.0.0.1:${POSTGRES_PORT}:5432
-      # Transaction pooler exposed publicly. Lock this down at the firewall to
-      # known source IPs — it puts Supavisor directly on the internet.
+      #
+      # Transaction pooler (6543) exposed publicly on all interfaces.
+      # Lock this down at the firewall to known source IPs — it puts Supavisor
+      # directly on the internet.
       - ${POOLER_PROXY_PORT_TRANSACTION}:6543
     volumes:
       - ./volumes/pooler/pooler.exs:/etc/pooler/pooler.exs:ro,z
