@@ -539,9 +539,20 @@ services:
     container_name: supabase-pooler
     image: supabase/supavisor:2.9.5
     restart: unless-stopped
+    # Fix for "hostname: Temporary failure in name resolution" crash loop on Dokploy:
+    # pin the container hostname and map it locally so the startup self-lookup
+    # (hostname -i) always resolves without relying on Docker's embedded DNS.
+    hostname: supabase-pooler
+    extra_hosts:
+      - "supabase-pooler:127.0.0.1"
     ports:
-      - ${POSTGRES_PORT}:5432
-      - ${POOLER_PROXY_PORT_TRANSACTION}:6543
+      # Bound to localhost so Postgres is NOT exposed to the public internet.
+      # Apps deployed on this server reach the db over the Docker network;
+      # for remote access use an SSH tunnel:
+      #   ssh -L 5432:127.0.0.1:5432 root@your-vps
+      # To expose publicly (not recommended), remove the "127.0.0.1:" prefix.
+      - 127.0.0.1:${POSTGRES_PORT}:5432
+      - 127.0.0.1:${POOLER_PROXY_PORT_TRANSACTION}:6543
     volumes:
       - ./volumes/pooler/pooler.exs:/etc/pooler/pooler.exs:ro,z
     healthcheck:
